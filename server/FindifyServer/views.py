@@ -1,33 +1,42 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view
+from rest_framework import status
 from . import models
 from .serializers import LostItemSerializer
 
-def list_lost_items(request):
-  lost_item = models.LostItem.objects.all()
-  LostItemSerializer(lost_item, many=True)
-  return JsonResponse({'lost_items': lost_item})
 
-def list_found_items(request):
-  found_items = models.FoundItem.objects.all()
-  return render(request, {'found_items': found_items})
+@api_view(['GET', 'POST', 'DELETE', 'PUT'])
+def lost_items(request):
+  if request.method == 'GET':
+    lost_items = models.LostItem.objects.all()
+    serializer = LostItemSerializer(lost_items, many=True)
+    return JsonResponse(serializer.data, safe=False)
+  elif request.method == 'POST':
+    serializer = LostItemSerializer(data=request.data)
+    if serializer.is_valid():
+      serializer.save()
+      return JsonResponse(serializer.data, status=status.HTTP_201_CREATED)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-def list_claims(request):
-  claims = models.Claim.objects.all()
-  return render(request, 'claims.html', {'claims': claims})
+@api_view(['GET', 'DELETE', 'PUT'])
+def lost_item(request, id):
 
-def list_users(request):
-  users = models.User.objects.all()
-  return render(request, 'users.html', {'users': users})
+  try:
+    lost_item = models.LostItem.objects.get(pk=id)
+  except models.LostItem.DoesNotExist:
+    return JsonResponse({'error': 'Lost item not found'}, status=status.HTTP_404_NOT_FOUND)
 
-def create_lost_item(request):
-  if request.method == 'POST':
-    name = request.POST['name']
-    description = request.POST['description']
-    date_lost = request.POST['date_lost']
-    owner = request.POST['owner']
-    lost_item = models.LostItem(name=name, description=description, date_lost=date_lost, owner=owner)
-    lost_item.save()
-    return HttpResponse('Lost item created!')
-  else:
-    return render(request, 'create_lost_item.html')
+  if request.method == 'GET':
+    serializer = LostItemSerializer(lost_item)
+    return JsonResponse(serializer.data)
+  elif request.method == 'DELETE':
+    lost_item.delete()
+    return JsonResponse({'message': 'Lost item deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+  elif request.method == 'PUT':
+    serializer = LostItemSerializer(lost_item, data=request.data)
+    if serializer.is_valid():
+      serializer.save()
+      return JsonResponse(serializer.data)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

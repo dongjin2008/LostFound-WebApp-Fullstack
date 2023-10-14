@@ -9,12 +9,19 @@ class User(models.Model):
   def __str__(self):
     return self.name
 
+class Tag(models.Model):
+  name = models.CharField(max_length=100)
+
+  def __str__(self) -> str:
+    return self.name
+
 class LostItem(models.Model):
   name = models.CharField(max_length=100)
   description = models.TextField()
   date_lost = models.DateField()
   owner = models.ForeignKey(User, on_delete=models.CASCADE)
   date_created = models.DateField(auto_now_add=True)
+  tags = models.ManyToManyField(Tag)
 
   def __str__(self) -> str:
     return self.name
